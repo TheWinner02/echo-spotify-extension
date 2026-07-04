@@ -1,11 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
 }
 
 dependencies {
     implementation(project(":ext"))
-    implementation(files("libs/unplayplay.aar"))
+    // implementation(files("libs/unplayplay.aar"))
     compileOnly(libs.echo.common)
     compileOnly(libs.kotlin.stdlib)
 }
@@ -84,12 +83,16 @@ android {
     }
 
     buildTypes {
-        all {
+        release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 generatedProguard.absolutePath
             )
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
 }
