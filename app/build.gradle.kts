@@ -4,7 +4,9 @@ plugins {
 
 dependencies {
     implementation(project(":ext"))
-    // implementation(files("libs/unplayplay.aar"))
+    if (file("libs/unplayplay.aar").exists()) {
+        implementation(files("libs/unplayplay.aar"))
+    }
     compileOnly(libs.echo.common)
     compileOnly(libs.kotlin.stdlib)
 }
