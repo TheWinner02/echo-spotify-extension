@@ -248,7 +248,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         val canvas =
             if (showCanvas) async { queries.canvas(track.id).json.toStreamable() } else null
         queries.extendedMetadata(track.id).toTrack(
-            hasPremium, true, showWidevineStreams, canvas?.await()
+            hasPremium, false, showWidevineStreams, canvas?.await()
         ).copy(
             isExplicit = track.isExplicit
         )

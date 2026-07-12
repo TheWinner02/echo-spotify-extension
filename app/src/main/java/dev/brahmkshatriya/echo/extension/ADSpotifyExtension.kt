@@ -16,9 +16,9 @@ class ADSpotifyExtension : SpotifyExtension() {
     }
 
     override val filesDir by lazy { File(getApplication().filesDir, "spotify") }
-    override val showWidevineStreams = true
-
+    override val showWidevineStreams = false
+ 
     override suspend fun getKey(json: Json, accessToken: String, fileId: String): ByteArray {
-        throw Exception("unplayplay library missing")
+        throw Exception("Playback is disabled in this metadata-only build")
     }
 }
