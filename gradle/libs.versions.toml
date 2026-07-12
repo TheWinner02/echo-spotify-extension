@@ -2,7 +2,7 @@
 echoCommon = "1.0.0"
 kotlin = "2.4.0"
 agp = "9.2.1"
-gradleShadow = "9.4.3"
+gradleShadow = "9.5.1"
 protobufJava = "4.35.1"
 
 [libraries]
@@ -18,4 +18,4 @@ gradle-shadow = { id = "com.gradleup.shadow", version.ref = "gradleShadow" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-google-protobuf = { id = "com.google.protobuf", version = "0.9.6" }
+google-protobuf = { id = "com.google.protobuf", version = "0.10.0" }

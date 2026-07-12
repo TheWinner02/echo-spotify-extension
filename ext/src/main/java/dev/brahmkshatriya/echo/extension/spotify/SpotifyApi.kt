@@ -125,7 +125,11 @@ class SpotifyApi {
                     put("extensions", extensions(persistedQuery))
                 }.toString().toRequestBody("application/json".toMediaType())
             )
-        return callGetBody(req.build())
+        val res = callGetBody(req.build())
+        if (res.contains("\"errors\"")) {
+            throw Exception("GraphQL Error in $operationName: $res")
+        }
+        return res
     }
 
     suspend inline fun <reified T> graphQuery(
@@ -251,8 +255,9 @@ class SpotifyApi {
         val res = client.newCall(req).await()
         if (ignore || res.isSuccessful) res
         else {
+            val body = runCatching { res.body.string() }.getOrNull()
             res.closeQuietly()
-            throw Exception("${res.code}: Failed to call - ${req.url}")
+            throw Exception("${res.code}: Failed to call - ${req.url} - Body: $body")
         }
     }
 

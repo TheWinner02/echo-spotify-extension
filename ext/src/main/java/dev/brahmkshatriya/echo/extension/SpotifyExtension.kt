@@ -347,8 +347,30 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         if (api.cookie == null) throw ClientException.LoginRequired()
         when (val type = playlist.id.substringAfter(":").substringBefore(":")) {
             "playlist" -> {
-                val uids = indexes.map { tracks[it].extras["uid"]!! }.toTypedArray()
-                queries.removeFromPlaylist(playlist.id, *uids)
+                val uids = indexes.map { index ->
+                    val track = tracks.getOrNull(index) ?: return@map null
+                    track.extras["uid"]
+                }
+                
+                val finalUids = if (uids.all { it != null }) {
+                    uids.filterNotNull().toTypedArray()
+                } else {
+                    val freshTracks = loadPlaylistTracks(playlist.id).loadAll()
+                    indexes.mapNotNull { index ->
+                        val track = tracks.getOrNull(index) ?: return@mapNotNull null
+                        val freshTrack = freshTracks.getOrNull(index)
+                        if (freshTrack != null && freshTrack.id == track.id) {
+                            freshTrack.extras["uid"]
+                        } else {
+                            freshTracks.firstOrNull { it.id == track.id }?.extras?.get("uid")
+                        }
+                    }.toTypedArray()
+                }
+                
+                if (finalUids.isEmpty()) {
+                    throw Exception("Could not resolve track UIDs for removal")
+                }
+                queries.removeFromPlaylist(playlist.id, *finalUids)
             }
 
             "collection" -> {

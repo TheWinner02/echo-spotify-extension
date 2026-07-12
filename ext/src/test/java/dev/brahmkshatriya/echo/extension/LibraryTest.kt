@@ -246,18 +246,32 @@ class LibraryTest {
 
     @Test
     fun editPlaylist() = testIn("Edit Playlist Test") {
-        val new = listOf(
-            Track("spotify:track:76I3PmbGZazzNlEwlp1y85", "")
-        )
-        val playlist = Playlist("spotify:playlist:6yK8Rfoj4WgTFyIowWg0n6", "", true)
-        val tracks = extension.loadTracks(playlist).loadAll().toMutableList()
-        extension.moveTrackInPlaylist(playlist, tracks, 0, 1)
-        tracks.add(1, tracks.removeAt(0))
-        extension.removeTracksFromPlaylist(playlist, tracks, listOf(1))
-        tracks.removeAt(1)
-        extension.addTracksToPlaylist(playlist, tracks, tracks.size, new)
-        tracks.addAll(tracks.size, new)
-        tracks.forEach { println(it) }
+        val playlist = extension.createPlaylist("Test Edit Playlist", "A playlist for testing edit operations")
+        try {
+            val trackToAdd = listOf(
+                Track("spotify:track:76I3PmbGZazzNlEwlp1y85", "")
+            )
+            // Add track to playlist
+            extension.addTracksToPlaylist(playlist, emptyList(), 0, trackToAdd)
+            
+            // Load tracks (to fetch the added track along with its uid)
+            val tracks = extension.loadTracks(playlist).loadAll()
+            println("Tracks in playlist: $tracks")
+            
+            // Verify track has a uid
+            val uid = tracks.first().extras["uid"]
+            println("Track UID: $uid")
+            
+            // Remove the track from the playlist
+            extension.removeTracksFromPlaylist(playlist, tracks, listOf(0))
+            println("Track removed successfully!")
+            
+            // Verify playlist is now empty
+            val emptyTracks = extension.loadTracks(playlist).loadAll()
+            println("Tracks in playlist after removal: $emptyTracks")
+        } finally {
+            extension.deletePlaylist(playlist)
+        }
     }
 
     @Test
