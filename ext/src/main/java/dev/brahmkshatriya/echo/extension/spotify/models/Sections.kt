@@ -48,7 +48,8 @@ data class Sections(
         BrowseGenericSectionData,
         BrowseGridSectionData,
         BrowseUnsupportedSectionData,
-        BrowseRelatedSectionData;
+        BrowseRelatedSectionData,
+        HomeNativeAdsSectionData;
     }
 
     @Serializable
