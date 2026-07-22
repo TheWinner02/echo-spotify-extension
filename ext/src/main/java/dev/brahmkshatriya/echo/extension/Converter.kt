@@ -130,6 +130,8 @@ fun Sections.toShelves(
             Sections.Typename.HomeOnboardingSectionDataV2 -> null
             Sections.Typename.HomeWatchFeedSectionData -> null
             Sections.Typename.HomeRecentlyPlayedSectionData -> null
+            Sections.Typename.HomeNativeAdsSectionData -> null
+            Sections.Typename.HomeYourDJSectionData -> null
         }
     }!!
 }
