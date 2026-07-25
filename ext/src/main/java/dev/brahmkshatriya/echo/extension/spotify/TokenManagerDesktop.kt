@@ -18,17 +18,22 @@ class TokenManagerDesktop(
     private val api: SpotifyApi,
 ) {
     private val json = api.json
-    val client = OkHttpClient.Builder()
-        .addInterceptor {
-            val req = it.request().newBuilder()
-            val cookie = api.cookie
-            if (cookie != null) req.addHeader("Cookie", cookie)
-            it.proceed(req.build())
-        }.build()
+    val client by lazy {
+        api.client.newBuilder()
+            .addInterceptor { chain ->
+                val req = chain.request().newBuilder()
+                val cookie = api.cookie
+                if (cookie != null) req.addHeader("Cookie", cookie)
+                chain.proceed(req.build())
+            }.build()
+    }
 
+    @Volatile
     var accessToken: String? = null
+    @Volatile
     var clientId: String? = null
         private set
+    @Volatile
     private var tokenExpiration: Long = 0
 
     private suspend fun createAnonymousAccessToken(): String {

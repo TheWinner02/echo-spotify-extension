@@ -497,13 +497,13 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
     }
 
     override suspend fun loadHomeFeed(): Feed<Shelf> {
-        val home = queries.home(null).json.data?.home!!
+        val home = queries.home(null).json.data?.home ?: return Feed(emptyList()) { PagedData.Single { emptyList<Shelf>() }.toFeedData() }
         val tabs = if (api.cookie == null) emptyList() else
-            listOf(Tab("", "All")) + home.homeChips?.toTabs()!!
+            listOf(Tab("", "All")) + home.homeChips?.toTabs().orEmpty()
         return Feed(tabs) { tab ->
             PagedData.Single {
                 val res = if (tab == null || tab.id == "") home
-                else queries.home(tab.id).json.data?.home!!
+                else queries.home(tab.id).json.data?.home ?: return@Single emptyList()
                 res.toShelves(queries, cropCovers)
             }.toFeedData()
         }
@@ -648,7 +648,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
             .getOrNull() ?: return@Single emptyList<Lyrics>()
         var last = Long.MAX_VALUE
         val list = lyrics.lines?.reversed()?.mapNotNull {
-            val start = it.startTimeMs?.toLong()!!
+            val start = it.startTimeMs?.toLong() ?: return@mapNotNull null
             val item = Lyrics.Item(
                 it.words ?: return@mapNotNull null,
                 startTime = start,
@@ -755,7 +755,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
 
         fun InputStream.skipBytes(len: Int) {
             var remaining = len
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            val buffer = ByteArray(minOf(remaining, DEFAULT_BUFFER_SIZE))
             while (remaining > 0) {
                 val toRead = minOf(remaining, buffer.size)
                 val read = read(buffer, 0, toRead)

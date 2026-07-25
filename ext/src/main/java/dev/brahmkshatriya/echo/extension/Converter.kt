@@ -52,14 +52,16 @@ import java.util.TimeZone
 import kotlin.math.ceil
 
 
-fun List<HomeFeed.Chip>.toTabs() = map {
-    Tab(it.id!!, it.label?.transformedLabel!!)
+fun List<HomeFeed.Chip>.toTabs() = mapNotNull {
+    val id = it.id ?: return@mapNotNull null
+    val label = it.label?.transformedLabel ?: return@mapNotNull null
+    Tab(id, label)
 }
 
 fun HomeFeed.Home.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
     return sectionContainer?.sections?.toShelves(
         queries, cropCovers, greeting?.transformedLabel ?: "What's on your mind?"
-    )!!
+    ).orEmpty()
 }
 
 fun Sections.toShelves(
@@ -83,7 +85,7 @@ fun Sections.toShelves(
                     id = uri,
                     title = title,
                     subtitle = subtitle,
-                    list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }!!,
+                    list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }.orEmpty(),
                 )
 
             Sections.Typename.HomeGenericSectionData, Sections.Typename.HomeSpotlightSectionData ->
@@ -91,14 +93,15 @@ fun Sections.toShelves(
                     id = uri,
                     title = title,
                     subtitle = subtitle,
-                    list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }!!,
-                    more = if ((item.sectionItems.totalCount ?: 0) > 3) paged<Shelf> { offset ->
+                    list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }.orEmpty(),
+                    more = if ((item.sectionItems?.totalCount ?: 0) > 3) paged<Shelf> { offset ->
                         val sectionItem = queries.homeSection(uri, token, offset).json
-                            .data.homeSections.sections.first().sectionItems
-                        val next = sectionItem.pagingInfo?.nextOffset
-                        sectionItem.items!!.mapNotNull {
+                            .data.homeSections.sections.firstOrNull()?.sectionItems
+                        val next = sectionItem?.pagingInfo?.nextOffset
+                        val shelves = sectionItem?.items?.mapNotNull {
                             it.content.toMediaItem(cropCovers)?.toShelf()
-                        } to next
+                        }.orEmpty()
+                        shelves to next
                     }.toFeed() else null
                 )
 
@@ -109,17 +112,17 @@ fun Sections.toShelves(
                     subtitle = subtitle,
                     list = item.sectionItems?.items?.mapNotNull {
                         it.toBrowseCategory(queries, cropCovers)
-                    }!!,
+                    }.orEmpty(),
                     type = Shelf.Lists.Type.Grid
                 )
             }
 
-            Sections.Typename.BrowseRelatedSectionData -> throw IllegalStateException()
+            Sections.Typename.BrowseRelatedSectionData -> null
             Sections.Typename.HomeShortsSectionData -> Shelf.Lists.Items(
                 id = uri,
                 title = title,
                 subtitle = subtitle,
-                list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }!!,
+                list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }.orEmpty(),
                 type = Shelf.Lists.Type.Grid
             )
 
@@ -131,7 +134,7 @@ fun Sections.toShelves(
             Sections.Typename.HomeWatchFeedSectionData -> null
             Sections.Typename.HomeRecentlyPlayedSectionData -> null
         }
-    }!!
+    }.orEmpty()
 }
 
 private fun SectionItem.toCategory(api: Queries, cropCovers: Boolean): Shelf.Category? {
@@ -238,18 +241,22 @@ fun dev.brahmkshatriya.echo.extension.spotify.models.Date.toDate(): Date? {
     return null
 }
 
-private fun String.toDate(precision: String? = null): Date {
-    val locale = Locale.ENGLISH
-    val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", locale)
-    formatter.timeZone = TimeZone.getTimeZone("UTC")
-    val targetTime = runCatching { formatter.parse(this) }.getOrElse {
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", locale).run {
-            timeZone = TimeZone.getTimeZone("UTC")
-            parse(this@toDate)
-        }
+private val dateFormatNoMillis = ThreadLocal.withInitial {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
     }
-    val calendar = Calendar.getInstance()
-    calendar.time = targetTime
+}
+private val dateFormatMillis = ThreadLocal.withInitial {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ENGLISH).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+}
+
+private fun String.toDate(precision: String? = null): Date {
+    val targetTime = runCatching { dateFormatNoMillis.get()!!.parse(this) }.getOrElse {
+        runCatching { dateFormatMillis.get()!!.parse(this@toDate) }.getOrNull()
+    } ?: return Date(0)
+    val calendar = Calendar.getInstance().apply { time = targetTime }
     val year = calendar.get(Calendar.YEAR)
     val month = calendar.get(Calendar.MONTH) + 1
     val day = calendar.get(Calendar.DAY_OF_MONTH)
@@ -386,8 +393,8 @@ fun pagedAlbums(
     var count = 0L
     return paged { offset ->
         val res = block(offset)
-        val items = res.items?.map {
-            it.releases?.items?.firstOrNull()?.toAlbum(cropCovers)!!
+        val items = res.items?.mapNotNull {
+            it.releases?.items?.firstOrNull()?.toAlbum(cropCovers)
         } ?: emptyList()
         val total = res.totalCount ?: 0
         count += items.size
@@ -405,7 +412,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Popular Albums",
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographyAll(uri, it)
-                    .json.data.artistUnion.discography?.all!!
+                    .json.data.artistUnion.discography?.all ?: Albums(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -414,7 +421,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Featuring ${profile?.name}",
             pagedItemsV2(cropCovers) {
                 queries.queryArtistFeaturing(uri, it)
-                    .json.data.artistUnion.relatedContent?.featuringV2!!
+                    .json.data.artistUnion.relatedContent?.featuringV2 ?: ItemsV2(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -423,7 +430,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Albums",
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographyAlbums(uri, it)
-                    .json.data.artistUnion.discography?.albums!!
+                    .json.data.artistUnion.discography?.albums ?: Albums(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -432,7 +439,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Singles",
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographySingles(uri, it)
-                    .json.data.artistUnion.discography?.singles!!
+                    .json.data.artistUnion.discography?.singles ?: Albums(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -441,7 +448,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Compilations",
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographyCompilations(uri, it)
-                    .json.data.artistUnion.discography?.compilations!!
+                    .json.data.artistUnion.discography?.compilations ?: Albums(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -450,7 +457,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Playlists",
             pagedItemsV2(cropCovers) {
                 queries.queryArtistPlaylists(uri, it)
-                    .json.data.artistUnion.profile?.playlistsV2!!
+                    .json.data.artistUnion.profile?.playlistsV2 ?: ItemsV2(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -459,7 +466,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Appears On",
             pagedAlbums(cropCovers) {
                 queries.queryArtistAppearsOn(uri, it)
-                    .json.data.artistUnion.relatedContent?.appearsOn!!
+                    .json.data.artistUnion.relatedContent?.appearsOn ?: Albums(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -468,7 +475,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Discovered On",
             pagedItemsV2(cropCovers) {
                 queries.queryArtistDiscoveredOn(uri, it)
-                    .json.data.artistUnion.relatedContent?.discoveredOnV2!!
+                    .json.data.artistUnion.relatedContent?.discoveredOnV2 ?: ItemsV2(null, null)
             }.toFeed(),
             cropCovers
         ),
@@ -478,7 +485,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
             "Artist",
             pagedArtists(cropCovers) {
                 queries.queryArtistRelated(uri, it)
-                    .json.data.artistUnion.relatedContent?.relatedArtists!!
+                    .json.data.artistUnion.relatedContent?.relatedArtists ?: Artists(null, null)
             }.toFeed(),
             cropCovers
         )
@@ -587,9 +594,10 @@ fun ItemsItem.toBrowseCategory(queries: Queries, cropCovers: Boolean): Shelf.Cat
     val uri = uri
     val item = content.data
     if (item !is Item.BrowseSectionContainer) return null
+    val title = item.data?.cardRepresentation?.title?.transformedLabel ?: return null
     return Shelf.Category(
         id = uri,
-        title = item.data?.cardRepresentation?.title?.transformedLabel!!,
+        title = title,
 //        image = item.data.cardRepresentation.artwork?.toImageHolder(),
         backgroundColor = item.data.cardRepresentation.backgroundColor?.hex,
         feed = paged {
@@ -601,8 +609,8 @@ fun ItemsItem.toBrowseCategory(queries: Queries, cropCovers: Boolean): Shelf.Cat
 }
 
 fun ProfileAttributes.toUser() = User(
-    id = data.me.profile.uri!!,
-    name = data.me.profile.name!!,
+    id = data.me.profile.uri ?: "",
+    name = data.me.profile.name ?: "",
     cover = data.me.profile.avatar?.sources?.lastOrNull()?.url?.toImageHolder()
 )
 
@@ -612,9 +620,10 @@ fun SearchDesktop.SearchV2.toShelvesAndTabs(
     queries: Queries,
     cropCovers: Boolean,
 ): Pair<PagedData<Shelf>, List<Tab>> {
-    val tabs = listOf(Tab("ALL", "All")) + chipOrder?.items?.map { chip ->
-        Tab(chip.typeName!!, chip.typeName.lowercase().replaceFirstChar { it.uppercaseChar() })
-    }!!
+    val tabs = listOf(Tab("ALL", "All")) + chipOrder?.items?.mapNotNull { chip ->
+        val name = chip.typeName ?: return@mapNotNull null
+        Tab(name, name.lowercase().replaceFirstChar { it.uppercaseChar() })
+    }.orEmpty()
 
     val shelves = listOfNotNull(
         topResultsV2?.itemsV2?.firstOrNull()?.item?.toMediaItem(cropCovers)?.toShelf(),
@@ -681,7 +690,7 @@ private fun Wrapper.toGenreCategory(
 ): Shelf.Category? {
     val item = data
     if (item !is Item.Genre) return null
-    val uri = item.uri!!
+    val uri = item.uri ?: return null
     return Shelf.Category(
         id = uri,
         title = item.name ?: return null,
@@ -890,19 +899,22 @@ fun pagedLibrary(
     queries: Queries, filter: String? = null, folderUri: String? = null, cropCovers: Boolean,
 ) = paged { offset ->
     val res = queries.libraryV3(offset, filter, folderUri)
-    val library = res.json.data?.me?.libraryV3!!
+    val library = res.json.data?.me?.libraryV3 ?: return@paged emptyList<Shelf>() to null
     val shelves = library.items.mapNotNull { it.toShelf(queries, cropCovers) }
-    val page = library.pagingInfo!!
-    val next = page.offset!! + page.limit!!
-    shelves to if (library.totalCount!! > next) next else null
+    val page = library.pagingInfo
+    val offsetVal = page?.offset ?: 0
+    val limitVal = page?.limit ?: 10
+    val next = (offsetVal + limitVal).toLong()
+    val total = (library.totalCount ?: 0).toLong()
+    shelves to if (total > next) next else null
 }
 
 fun LibraryV3.Item.toShelf(queries: Queries, cropCovers: Boolean): Shelf? {
     return if (item?.typename == "LibraryFolderResponseWrapper") {
-        val folder = item.data as Item.Folder
+        val folder = item.data as? Item.Folder ?: return null
         val folderUri = folder.uri ?: return null
         Shelf.Category(
-            folderUri, folder.name!!,
+            folderUri, folder.name.orEmpty(),
             pagedLibrary(queries, null, folderUri, cropCovers).toFeed()
         )
     } else item?.data?.toMediaItem(cropCovers)?.toShelf()
@@ -917,7 +929,7 @@ fun editablePlaylists(
     paged { offset ->
         val res = queries.editablePlaylists(
             offset, folderUri, track ?: "spotify:track:3z5lNLYtGC6LmvrxSbCQgd"
-        ).json.data.me.editablePlaylists!!
+        ).json.data.me.editablePlaylists ?: return@paged emptyList<Pair<Playlist, Boolean>>() to null
         val playlists = res.items.mapNotNull {
             when (val item = it.item.data) {
                 is Item.PseudoPlaylist -> {
@@ -940,7 +952,10 @@ fun editablePlaylists(
                 else -> null
             }
         }.flatten()
-        val page = res.pagingInfo!!
-        val next = page.offset!! + page.limit!!
-        playlists to if (res.totalCount!! > next) next else null
+        val page = res.pagingInfo
+        val offsetVal = page?.offset ?: 0
+        val limitVal = page?.limit ?: 50
+        val next = (offsetVal + limitVal).toLong()
+        val total = (res.totalCount ?: 0).toLong()
+        playlists to if (total > next) next else null
     }

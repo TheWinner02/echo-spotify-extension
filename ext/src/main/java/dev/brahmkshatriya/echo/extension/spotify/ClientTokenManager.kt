@@ -18,11 +18,13 @@ class ClientTokenManager(
     private val json = api.json
     private val mutex = Mutex()
 
+    @Volatile
     var clientToken: String? = null
         private set
+    @Volatile
     private var tokenExpiration: Long = 0
 
-    private val client = OkHttpClient()
+    private val client get() = api.client
 
     suspend fun ensureValid() {
         mutex.withLock {
