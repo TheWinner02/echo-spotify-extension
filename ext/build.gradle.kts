@@ -28,6 +28,12 @@ kotlin {
     jvmToolchain(17)
 }
 
+sourceSets {
+    main {
+        java.srcDir(layout.buildDirectory.dir("generated/sources/proto/main/java"))
+    }
+}
+
 // Extension properties goto `gradle.properties` to set values
 
 val extType: String by project

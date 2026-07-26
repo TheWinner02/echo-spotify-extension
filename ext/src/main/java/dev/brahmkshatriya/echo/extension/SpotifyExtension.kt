@@ -147,11 +147,11 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         return queries.profileAttributes().json.toUser()
     }
 
-    private var product: AccountAttributes.Product? = null
+    private var product: String? = null
     private suspend fun hasPremium(): Boolean {
         if (api.cookie == null) return false
         if (product == null) product = queries.accountAttributes().json.data.me.account.product
-        return product != AccountAttributes.Product.FREE
+        return !product.equals("FREE", ignoreCase = true)
     }
 
     private fun getBrowsePage(): Feed.Data<Shelf> = PagedData.Single {

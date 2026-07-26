@@ -271,17 +271,10 @@ data class BackgroundColor(
 
 @Serializable
 data class ContentRating(
-    val label: Label? = null
+    val label: String? = null
 ) {
-    fun isExplicit(): Boolean = when (label) {
-        Label.EXPLICIT, Label.NINETEEN_PLUS -> true
-        else -> false
-    }
+    fun isExplicit(): Boolean = label == "EXPLICIT" || label == "NINETEEN_PLUS"
 }
-
-@Suppress("unused")
-@Serializable
-enum class Label { EXPLICIT, NINETEEN_PLUS, NONE }
 
 @Serializable
 data class CardData(

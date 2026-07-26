@@ -72,15 +72,15 @@ fun Sections.toShelves(
 ): List<Shelf> {
     return items?.mapNotNull { item ->
         item.data ?: return@mapNotNull null
-        if (item.data.typename == Sections.Typename.BrowseRelatedSectionData)
+        val typename = item.data.typename
+        if (typename == "BrowseRelatedSectionData")
             return@mapNotNull item.toCategory(queries, cropCovers)
 
         val uri = item.uri ?: return@mapNotNull null
         val title = item.data.title?.transformedLabel ?: emptyTitle ?: ""
         val subtitle = item.data.subtitle?.transformedLabel
-        when (item.data.typename) {
-            null -> null
-            Sections.Typename.BrowseGenericSectionData ->
+        when (typename) {
+            "BrowseGenericSectionData" ->
                 Shelf.Lists.Items(
                     id = uri,
                     title = title,
@@ -88,7 +88,7 @@ fun Sections.toShelves(
                     list = item.sectionItems?.items?.mapNotNull { it.content.toMediaItem(cropCovers) }.orEmpty(),
                 )
 
-            Sections.Typename.HomeGenericSectionData, Sections.Typename.HomeSpotlightSectionData ->
+            "HomeGenericSectionData", "HomeSpotlightSectionData" ->
                 Shelf.Lists.Items(
                     id = uri,
                     title = title,
@@ -105,7 +105,7 @@ fun Sections.toShelves(
                     }.toFeed() else null
                 )
 
-            Sections.Typename.BrowseGridSectionData -> {
+            "BrowseGridSectionData" -> {
                 Shelf.Lists.Categories(
                     id = uri,
                     title = title,
@@ -117,8 +117,7 @@ fun Sections.toShelves(
                 )
             }
 
-            Sections.Typename.BrowseRelatedSectionData -> null
-            Sections.Typename.HomeShortsSectionData -> Shelf.Lists.Items(
+            "HomeShortsSectionData" -> Shelf.Lists.Items(
                 id = uri,
                 title = title,
                 subtitle = subtitle,
@@ -126,13 +125,10 @@ fun Sections.toShelves(
                 type = Shelf.Lists.Type.Grid
             )
 
-            Sections.Typename.HomeFeedBaselineSectionData -> item.sectionItems?.items
+            "HomeFeedBaselineSectionData" -> item.sectionItems?.items
                 ?.firstOrNull()?.content?.data?.toMediaItem(cropCovers)?.toShelf()
 
-            Sections.Typename.BrowseUnsupportedSectionData -> null
-            Sections.Typename.HomeOnboardingSectionDataV2 -> null
-            Sections.Typename.HomeWatchFeedSectionData -> null
-            Sections.Typename.HomeRecentlyPlayedSectionData -> null
+            else -> null
         }
     }.orEmpty()
 }
@@ -902,10 +898,10 @@ fun pagedLibrary(
     val library = res.json.data?.me?.libraryV3 ?: return@paged emptyList<Shelf>() to null
     val shelves = library.items.mapNotNull { it.toShelf(queries, cropCovers) }
     val page = library.pagingInfo
-    val offsetVal = page?.offset ?: 0
-    val limitVal = page?.limit ?: 10
-    val next = (offsetVal + limitVal).toLong()
-    val total = (library.totalCount ?: 0).toLong()
+    val offsetVal = page?.offset ?: 0L
+    val limitVal = page?.limit ?: 10L
+    val next = offsetVal + limitVal
+    val total = library.totalCount ?: 0L
     shelves to if (total > next) next else null
 }
 
@@ -953,9 +949,9 @@ fun editablePlaylists(
             }
         }.flatten()
         val page = res.pagingInfo
-        val offsetVal = page?.offset ?: 0
-        val limitVal = page?.limit ?: 50
-        val next = (offsetVal + limitVal).toLong()
-        val total = (res.totalCount ?: 0).toLong()
+        val offsetVal = page?.offset ?: 0L
+        val limitVal = page?.limit ?: 50L
+        val next = offsetVal + limitVal
+        val total = res.totalCount ?: 0L
         playlists to if (total > next) next else null
     }

@@ -30,26 +30,11 @@ data class Sections(
     @Serializable
     data class Data(
         @SerialName("__typename")
-        val typename: Typename? = null,
+        val typename: String? = null,
 
         val subtitle: Title? = null,
         val title: Title? = null
     )
-
-    @Serializable
-    enum class Typename {
-        HomeShortsSectionData,
-        HomeGenericSectionData,
-        HomeFeedBaselineSectionData,
-        HomeRecentlyPlayedSectionData,
-        HomeSpotlightSectionData,
-        HomeOnboardingSectionDataV2,
-        HomeWatchFeedSectionData,
-        BrowseGenericSectionData,
-        BrowseGridSectionData,
-        BrowseUnsupportedSectionData,
-        BrowseRelatedSectionData;
-    }
 
     @Serializable
     data class Items(

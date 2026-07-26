@@ -20,12 +20,6 @@ data class AccountAttributes (
     @Serializable
     data class Account(
         val country: String? = null,
-        val product: Product
+        val product: String? = null
     )
-
-    @Suppress("unused")
-    @Serializable
-    enum class Product {
-        FREE, PREMIUM, FAMILY, STUDENT
-    }
 }
