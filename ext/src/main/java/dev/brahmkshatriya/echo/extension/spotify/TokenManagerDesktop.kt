@@ -444,7 +444,7 @@ class TokenManagerDesktop(
         if (accessToken == null || !isTokenWorking(tokenExpiration)) {
             val spDc = getSpDc()
             if (spDc.isNullOrBlank()) createAnonymousAccessToken()
-            else createDesktopAccessToken(spDc)
+            else runCatching { createDesktopAccessToken(spDc) }.getOrElse { createAnonymousAccessToken() }
         }
         else accessToken!!
 
