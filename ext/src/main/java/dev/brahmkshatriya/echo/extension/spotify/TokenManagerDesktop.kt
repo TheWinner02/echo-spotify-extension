@@ -67,19 +67,37 @@ class TokenManagerDesktop(
                 "?reason=init&productType=web-player&totp=$totp&totpServer=$totp&totpVer=$version"
     }
 
-    private val secretsUrl =
+    private val secretsUrls = listOf(
+        "https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/main/noidea.txt",
         "https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/noidea.txt"
+    )
 
     @OptIn(ExperimentalEncodingApi::class)
     private suspend fun getDataFromSite(): Secret {
-        val string = client.newCall(
-            Request.Builder()
-                .url(secretsUrl)
-                .header("User-Agent", WebPlayerConfig.USER_AGENT)
-                .build()
-        ).await().body.string()
-        val (secret, version) = json.decode<Secret>(string)
-        return Secret(convertToHex(secret), version)
+        var lastException: Exception? = null
+        for (url in secretsUrls) {
+            try {
+                val response = client.newCall(
+                    Request.Builder()
+                        .url(url)
+                        .header("User-Agent", WebPlayerConfig.USER_AGENT)
+                        .build()
+                ).await()
+                if (!response.isSuccessful) {
+                    response.close()
+                    continue
+                }
+                val string = response.body.string()
+                if (!string.trim().startsWith("{")) {
+                    continue
+                }
+                val (secret, version) = json.decode<Secret>(string)
+                return Secret(convertToHex(secret), version)
+            } catch (e: Exception) {
+                lastException = e
+            }
+        }
+        throw lastException ?: java.io.IOException("Failed to fetch valid Spotify secrets from site")
     }
 
     companion object {
