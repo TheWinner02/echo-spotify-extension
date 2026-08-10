@@ -15,8 +15,8 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
     testImplementation(libs.echo.common)
-    testImplementation("xyz.gianlu.librespot:librespot-lib:1.6.5")
-    testImplementation("org.slf4j:slf4j-simple:2.0.18")
+    testImplementation(libs.librespot.lib)
+    testImplementation(libs.slf4j.simple)
 }
 
 java {
@@ -53,7 +53,7 @@ val extUpdateUrl: String? by project
 val verCode = (project.findProperty("extVersionCode") as? String)?.toIntOrNull()
     ?: runCatching { execute("git", "rev-list", "--count", "HEAD").toInt() }.getOrDefault(1)
 val verName = (project.findProperty("extVersionName") as? String)
-    ?: runCatching { "v" + execute("git", "rev-parse", "HEAD").take(7) }.getOrDefault("v1.0.2")
+    ?: runCatching { "v" + execute("git", "rev-parse", "HEAD").take(7) }.getOrDefault("v1.0.3")
 
 publishing {
     publications {

@@ -3,14 +3,18 @@ echoCommon = "1.0.0"
 kotlin = "2.4.10"
 agp = "9.3.1"
 gradleShadow = "9.6.1"
+librespotLib = "1.6.5"
 protobufJava = "4.35.1"
+slf4jSimple = "2.0.18"
 
 [libraries]
 echo-common = { module = "dev.brahmkshatriya.echo:common", version.ref = "echoCommon" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 junit = { module = "junit:junit", version = "4.13.2" }
 coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version = "1.11.0" }
+librespot-lib = { module = "xyz.gianlu.librespot:librespot-lib", version.ref = "librespotLib" }
 protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobufJava" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4jSimple" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

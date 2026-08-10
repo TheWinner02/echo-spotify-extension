@@ -553,22 +553,40 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         }
     }
 
+    private fun getSpotifyUri(item: EchoMediaItem): String {
+        val id = item.id
+        if (id.startsWith("spotify:")) return id
+        return when (item) {
+            is Track -> "spotify:track:$id"
+            is Album -> "spotify:album:$id"
+            is Artist -> "spotify:artist:$id"
+            is Playlist -> "spotify:playlist:$id"
+            else -> id
+        }
+    }
+
     override suspend fun saveToLibrary(item: EchoMediaItem, shouldSave: Boolean) {
         if (api.cookie == null) throw ClientException.LoginRequired()
-        if (shouldSave) queries.addToLibrary(item.id)
-        else queries.removeFromLibrary(item.id)
+        val uri = getSpotifyUri(item)
+        if (uri.startsWith("spotify:user:")) return
+        if (shouldSave) queries.addToLibrary(uri)
+        else queries.removeFromLibrary(uri)
     }
 
     override suspend fun isItemSaved(item: EchoMediaItem): Boolean {
         if (api.cookie == null) return false
-        val isSaved = queries.areEntitiesInLibrary(item.id)
+        val uri = getSpotifyUri(item)
+        val isSaved = queries.areEntitiesInLibrary(uri)
             .json.data?.lookup?.firstOrNull()?.data?.saved
         return isSaved ?: false
     }
 
     override suspend fun likeItem(item: EchoMediaItem, shouldLike: Boolean) {
-        if (shouldLike) queries.addToLibrary(item.id)
-        else queries.removeFromLibrary(item.id)
+        if (api.cookie == null) throw ClientException.LoginRequired()
+        val uri = getSpotifyUri(item)
+        if (uri.startsWith("spotify:user:")) return
+        if (shouldLike) queries.addToLibrary(uri)
+        else queries.removeFromLibrary(uri)
     }
 
     override suspend fun isItemLiked(item: EchoMediaItem) = isItemSaved(item)
@@ -582,19 +600,14 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
 
     override suspend fun followItem(item: EchoMediaItem, shouldFollow: Boolean) {
         if (api.cookie == null) throw ClientException.LoginRequired()
-        when (val type = item.id.substringAfter(":").substringBefore(":")) {
-            "artist" -> {
-                if (shouldFollow) queries.addToLibrary(item.id)
-                else queries.removeFromLibrary(item.id)
-            }
-
-            "user" -> {
-                val id = item.id.substringAfter("spotify:user:")
-                if (shouldFollow) queries.followUsers(id)
-                else queries.unfollowUsers(id)
-            }
-
-            else -> throw IllegalArgumentException("Unsupported artist type: $type")
+        val uri = getSpotifyUri(item)
+        if (uri.startsWith("spotify:user:")) {
+            val id = uri.substringAfter("spotify:user:")
+            if (shouldFollow) queries.followUsers(id)
+            else queries.unfollowUsers(id)
+        } else {
+            if (shouldFollow) queries.addToLibrary(uri)
+            else queries.removeFromLibrary(uri)
         }
     }
 
