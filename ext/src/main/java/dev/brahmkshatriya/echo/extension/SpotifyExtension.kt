@@ -554,14 +554,15 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
     }
 
     private fun getSpotifyUri(item: EchoMediaItem): String {
-        val id = item.id
+        val id = item.extras["spotify_id"] ?: item.id
         if (id.startsWith("spotify:")) return id
+        val cleanId = id.substringAfterLast(":")
         return when (item) {
-            is Track -> "spotify:track:$id"
-            is Album -> "spotify:album:$id"
-            is Artist -> "spotify:artist:$id"
-            is Playlist -> "spotify:playlist:$id"
-            else -> id
+            is Track -> "spotify:track:$cleanId"
+            is Album -> "spotify:album:$cleanId"
+            is Artist -> "spotify:artist:$cleanId"
+            is Playlist -> "spotify:playlist:$cleanId"
+            else -> "spotify:track:$cleanId"
         }
     }
 
