@@ -570,6 +570,13 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         if (api.cookie == null) throw ClientException.LoginRequired()
         val uri = getSpotifyUri(item)
         if (uri.startsWith("spotify:user:")) return
+        if (uri.startsWith("spotify:playlist:")) {
+            val rawUser = api.userId ?: getCurrentUser()?.id ?: return
+            val user = rawUser.substringAfter("spotify:user:")
+            if (shouldSave) queries.playlistToLibrary(user, uri)
+            else queries.deletePlaylist(user, uri)
+            return
+        }
         if (shouldSave) queries.addToLibrary(uri)
         else queries.removeFromLibrary(uri)
     }
@@ -577,17 +584,28 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
     override suspend fun isItemSaved(item: EchoMediaItem): Boolean {
         if (api.cookie == null) return false
         val uri = getSpotifyUri(item)
-        val isSaved = queries.areEntitiesInLibrary(uri)
-            .json.data?.lookup?.firstOrNull()?.data?.saved
+        if (uri.startsWith("spotify:playlist:")) {
+            val libItems = runCatching {
+                queries.libraryV3(0).json.data?.me?.libraryV3?.items.orEmpty()
+            }.getOrNull()
+            val targetId = uri.substringAfterLast(":")
+            val inLibrary = libItems?.any { el ->
+                val elUri = el.item?.uri ?: ""
+                elUri == uri || elUri == item.id || (elUri.isNotEmpty() && elUri.endsWith(targetId))
+            } ?: false
+            if (inLibrary) return true
+
+            val list = runCatching { editablePlaylists(queries, null, null, cropCovers).loadAll() }.getOrNull()
+            return list?.any { it.first.id == item.id || it.first.id == uri || it.first.id.endsWith(targetId) } ?: false
+        }
+        val isSaved = runCatching {
+            queries.areEntitiesInLibrary(uri).json.data?.lookup?.firstOrNull()?.data?.saved
+        }.getOrNull()
         return isSaved ?: false
     }
 
     override suspend fun likeItem(item: EchoMediaItem, shouldLike: Boolean) {
-        if (api.cookie == null) throw ClientException.LoginRequired()
-        val uri = getSpotifyUri(item)
-        if (uri.startsWith("spotify:user:")) return
-        if (shouldLike) queries.addToLibrary(uri)
-        else queries.removeFromLibrary(uri)
+        saveToLibrary(item, shouldLike)
     }
 
     override suspend fun isItemLiked(item: EchoMediaItem) = isItemSaved(item)
@@ -607,8 +625,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
             if (shouldFollow) queries.followUsers(id)
             else queries.unfollowUsers(id)
         } else {
-            if (shouldFollow) queries.addToLibrary(uri)
-            else queries.removeFromLibrary(uri)
+            saveToLibrary(item, shouldFollow)
         }
     }
 
