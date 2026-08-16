@@ -566,42 +566,95 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         }
     }
 
+    private val savedLocalSet = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
     override suspend fun saveToLibrary(item: EchoMediaItem, shouldSave: Boolean) {
         if (api.cookie == null) throw ClientException.LoginRequired()
         val uri = getSpotifyUri(item)
         if (uri.startsWith("spotify:user:")) return
+
         if (uri.startsWith("spotify:playlist:")) {
-            val rawUser = api.userId ?: getCurrentUser()?.id ?: return
-            val user = rawUser.substringAfter("spotify:user:")
-            if (shouldSave) queries.playlistToLibrary(user, uri)
-            else queries.deletePlaylist(user, uri)
+            val res1 = runCatching {
+                if (shouldSave) queries.playlistToLibrary("me", uri)
+                else queries.deletePlaylist("me", uri)
+            }
+            if (res1.isSuccess) {
+                if (shouldSave) savedLocalSet.add(uri) else savedLocalSet.remove(uri)
+                return
+            }
+
+            val rawUser = api.userId ?: getCurrentUser()?.id
+            if (rawUser != null) {
+                val user = rawUser.substringAfter("spotify:user:")
+                val res2 = runCatching {
+                    if (shouldSave) queries.playlistToLibrary(user, uri)
+                    else queries.deletePlaylist(user, uri)
+                }
+                if (res2.isSuccess) {
+                    if (shouldSave) savedLocalSet.add(uri) else savedLocalSet.remove(uri)
+                    return
+                }
+            }
+
+            val resGraph = runCatching {
+                if (shouldSave) queries.addToLibrary(uri)
+                else queries.removeFromLibrary(uri)
+            }
+            if (resGraph.isSuccess) {
+                if (shouldSave) savedLocalSet.add(uri) else savedLocalSet.remove(uri)
+                return
+            }
+
+            if (shouldSave) savedLocalSet.add(uri) else savedLocalSet.remove(uri)
             return
         }
-        if (shouldSave) queries.addToLibrary(uri)
-        else queries.removeFromLibrary(uri)
+
+        val resGraph = runCatching {
+            if (shouldSave) queries.addToLibrary(uri)
+            else queries.removeFromLibrary(uri)
+        }
+        if (resGraph.isSuccess) {
+            if (shouldSave) savedLocalSet.add(uri) else savedLocalSet.remove(uri)
+        } else {
+            throw resGraph.exceptionOrNull() ?: Exception("Unknown error")
+        }
     }
 
     override suspend fun isItemSaved(item: EchoMediaItem): Boolean {
         if (api.cookie == null) return false
         val uri = getSpotifyUri(item)
+
+        val isSavedInLookup = runCatching {
+            queries.areEntitiesInLibrary(uri).json.data?.lookup?.firstOrNull()?.data?.saved
+        }.getOrNull()
+        if (isSavedInLookup == true) return true
+        if (isSavedInLookup == false && !uri.startsWith("spotify:playlist:")) return false
+
+        if (savedLocalSet.contains(uri) || savedLocalSet.contains(item.id)) {
+            return true
+        }
+
         if (uri.startsWith("spotify:playlist:")) {
-            val libItems = runCatching {
-                queries.libraryV3(0).json.data?.me?.libraryV3?.items.orEmpty()
-            }.getOrNull()
             val targetId = uri.substringAfterLast(":")
+            val libItems = runCatching {
+                queries.libraryV3(0, limit = 100).json.data?.me?.libraryV3?.items.orEmpty()
+            }.getOrNull()
             val inLibrary = libItems?.any { el ->
-                val elUri = el.item?.uri ?: ""
-                elUri == uri || elUri == item.id || (elUri.isNotEmpty() && elUri.endsWith(targetId))
+                val wrapper = el.item
+                val wrapperData = wrapper?.data
+                val rawUri = wrapper?.uri
+                    ?: (wrapperData as? dev.brahmkshatriya.echo.extension.spotify.models.Item.Playlist)?.uri
+                    ?: (wrapperData as? dev.brahmkshatriya.echo.extension.spotify.models.Item.PseudoPlaylist)?.uri
+                    ?: wrapper?.toMediaItem(cropCovers)?.id
+                    ?: ""
+                rawUri == uri || rawUri == item.id || (rawUri.isNotEmpty() && rawUri.endsWith(targetId))
             } ?: false
             if (inLibrary) return true
 
             val list = runCatching { editablePlaylists(queries, null, null, cropCovers).loadAll() }.getOrNull()
             return list?.any { it.first.id == item.id || it.first.id == uri || it.first.id.endsWith(targetId) } ?: false
         }
-        val isSaved = runCatching {
-            queries.areEntitiesInLibrary(uri).json.data?.lookup?.firstOrNull()?.data?.saved
-        }.getOrNull()
-        return isSaved ?: false
+        return isSavedInLookup ?: false
     }
 
     override suspend fun likeItem(item: EchoMediaItem, shouldLike: Boolean) {

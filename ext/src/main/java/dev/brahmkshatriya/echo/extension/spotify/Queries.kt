@@ -467,7 +467,7 @@ class Queries(
     )
 
     suspend fun libraryV3(
-        offset: Int, filter: String? = null, folderUri: String? = null
+        offset: Int, filter: String? = null, folderUri: String? = null, limit: Int = 50
     ) = api.graphQuery<LibraryV3>(
         "libraryV3",
         "866c12e82c0edea47a0b9e8f91f35602b6e6ce75740a6da2c790c0003a70fcd1",
@@ -481,9 +481,9 @@ class Queries(
                 add("LIKED_SONGS")
                 add("YOUR_EPISODES")
             }
-            put("limit", 10)
+            put("limit", limit)
             put("offset", offset)
-            put("flatten", false)
+            put("flatten", true)
             putJsonArray("expandedFolders") {}
             put("folderUri", folderUri)
             put("includeFoldersWhenFlattening", true)

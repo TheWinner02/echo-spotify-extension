@@ -265,6 +265,25 @@ class SpotifyApi {
         return webMutex.withLock { web.getToken() }
     }
 
+    suspend fun followPlaylist(playlistId: String, shouldFollow: Boolean) {
+        runCatching {
+            webMutex.withLock { web.getToken() }
+            clientTokenManager.ensureValid()
+        }
+        val url = "https://api.spotify.com/v1/playlists/$playlistId/followers"
+        val requestBuilder = Request.Builder().url(url)
+        if (shouldFollow) {
+            requestBuilder.put("{}".toRequestBody("application/json".toMediaType()))
+        } else {
+            requestBuilder.delete()
+        }
+        val req = requestBuilder.build()
+        val response = call(req)
+        if (!response.isSuccessful) {
+            throw Exception("Failed to update playlist library state: ${response.code} ${response.message}")
+        }
+    }
+
     var userId: String? = null
     fun setUser(id: String?) {
         userId = id
