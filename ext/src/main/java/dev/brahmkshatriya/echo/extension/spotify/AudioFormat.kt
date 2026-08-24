@@ -1,7 +1,5 @@
 package dev.brahmkshatriya.echo.extension.spotify
 
-import spotify.extendedmetadata.metadata.ExtendedMetadataProto.AudioFile
-
 object AudioFormat {
     const val OGG_VORBIS_96 = 0
     const val OGG_VORBIS_160 = 1
@@ -28,26 +26,52 @@ object AudioFormat {
     const val FLAC_FLAC_24BIT = 22
     const val MP4_FLAC_24BIT = 23
 
-    fun name(format: Int): String = AudioFile.Format.forNumber(format)?.name ?: "UNKNOWN"
+    fun name(format: Int): String = when (format) {
+        OGG_VORBIS_96 -> "OGG_VORBIS_96"
+        OGG_VORBIS_160 -> "OGG_VORBIS_160"
+        OGG_VORBIS_320 -> "OGG_VORBIS_320"
+        MP3_256 -> "MP3_256"
+        MP3_320 -> "MP3_320"
+        MP3_160 -> "MP3_160"
+        MP3_96 -> "MP3_96"
+        MP3_160_ENC -> "MP3_160_ENC"
+        AAC_24 -> "AAC_24"
+        AAC_48 -> "AAC_48"
+        MP4_128 -> "MP4_128"
+        MP4_256 -> "MP4_256"
+        MP4_128_DUAL -> "MP4_128_DUAL"
+        MP4_256_DUAL -> "MP4_256_DUAL"
+        MP4_128_CBCS -> "MP4_128_CBCS"
+        MP4_256_CBCS -> "MP4_256_CBCS"
+        FLAC_FLAC -> "FLAC_FLAC"
+        MP4_FLAC -> "MP4_FLAC"
+        XHE_AAC_24 -> "XHE_AAC_24"
+        XHE_AAC_16 -> "XHE_AAC_16"
+        XHE_AAC_12 -> "XHE_AAC_12"
+        HE_AAC_64 -> "HE_AAC_64"
+        FLAC_FLAC_24BIT -> "FLAC_FLAC_24BIT"
+        MP4_FLAC_24BIT -> "MP4_FLAC_24BIT"
+        else -> "UNKNOWN"
+    }
 
     fun quality(format: Int): Int = when (format) {
-        OGG_VORBIS_96 -> 0
-        OGG_VORBIS_160 -> 1
-        OGG_VORBIS_320 -> 2
-        MP3_96 -> 0
-        MP3_160, MP3_160_ENC -> 1
-        MP3_256 -> 2
-        MP3_320 -> 2
-        AAC_24 -> 0
-        AAC_48 -> 1
-        HE_AAC_64 -> 1
-        XHE_AAC_12 -> 0
-        XHE_AAC_16 -> 0
-        XHE_AAC_24 -> 1
-        MP4_128, MP4_128_DUAL, MP4_128_CBCS -> 1
-        MP4_256, MP4_256_DUAL, MP4_256_CBCS -> 2
-        FLAC_FLAC, MP4_FLAC -> 3
-        FLAC_FLAC_24BIT, MP4_FLAC_24BIT -> 4
+        OGG_VORBIS_96 -> 96
+        OGG_VORBIS_160 -> 160
+        OGG_VORBIS_320 -> 320
+        MP3_96 -> 96
+        MP3_160, MP3_160_ENC -> 160
+        MP3_256 -> 256
+        MP3_320 -> 320
+        AAC_24 -> 24
+        AAC_48 -> 48
+        HE_AAC_64 -> 64
+        XHE_AAC_12 -> 12
+        XHE_AAC_16 -> 16
+        XHE_AAC_24 -> 24
+        MP4_128, MP4_128_DUAL, MP4_128_CBCS -> 128
+        MP4_256, MP4_256_DUAL, MP4_256_CBCS -> 256
+        FLAC_FLAC, MP4_FLAC -> 1411
+        FLAC_FLAC_24BIT, MP4_FLAC_24BIT -> 4608
         else -> 0
     }
 }
