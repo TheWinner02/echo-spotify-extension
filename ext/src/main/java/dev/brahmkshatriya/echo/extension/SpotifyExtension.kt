@@ -1,5 +1,7 @@
 package dev.brahmkshatriya.echo.extension
 
+import dev.brahmkshatriya.echo.common.providers.GlobalSettingsProvider
+
 import dev.brahmkshatriya.echo.common.clients.AlbumClient
 import dev.brahmkshatriya.echo.common.clients.ArtistClient
 import dev.brahmkshatriya.echo.common.clients.ExtensionClient
@@ -77,19 +79,23 @@ import javax.crypto.spec.SecretKeySpec
 open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
     SearchFeedClient, HomeFeedClient, LibraryFeedClient, LyricsClient, ShareClient,
     TrackClient, LikeClient, RadioClient, SaveClient,
-    AlbumClient, PlaylistClient, ArtistClient, FollowClient, PlaylistEditClient {
+    AlbumClient, PlaylistClient, ArtistClient, FollowClient, PlaylistEditClient, GlobalSettingsProvider {
+    override fun setGlobalSettings(globalSettings: Settings) {
+        ExtensionText.settings = globalSettings
+    }
+
 
     override suspend fun getSettingItems() = listOf(
         SettingSwitch(
-            "Show Canvas",
+            ExtensionText.get("providers.show_canvas_08128d", "Show Canvas"),
             "show_canvas",
-            "Whether to show background video canvas in songs",
+            ExtensionText.get("providers.whether_to_show_background_video_canvas_in_songs_e1052e", "Whether to show background video canvas in songs"),
             showCanvas
         ),
         SettingSwitch(
-            "Crop Covers",
+            ExtensionText.get("providers.crop_covers_1eeac6", "Crop Covers"),
             "crop_covers",
-            "Whether to crop artist and users images to fill the whole circle",
+            ExtensionText.get("providers.whether_to_crop_artist_and_users_images_to_fill__692155", "Whether to crop artist and users images to fill the whole circle"),
             cropCovers
         )
     )
@@ -211,7 +217,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         }
         val list =
             rec.items.mapNotNull { it.data?.toTrack(cropCovers) }.takeIf { it.isNotEmpty() }?.let {
-                listOf(Shelf.Lists.Tracks("${track.id}_more", "More like this", it))
+                listOf(Shelf.Lists.Tracks("${track.id}_more", ExtensionText.get("providers.more_like_this_ee548a", "More like this"), it))
             } ?: emptyList<Shelf>()
         val first =
             union.firstArtist?.items?.firstOrNull()?.toShelves(queries, cropCovers) ?: emptyList()
@@ -449,7 +455,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
                     listOf(
                         Shelf.Lists.Items(
                             id = "${playlist.id}_more",
-                            title = "More Playlists like this",
+                            title = ExtensionText.get("providers.more_playlists_like_this_3a1836", "More Playlists like this"),
                             list = playlists,
                         )
                     )
@@ -499,7 +505,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
     override suspend fun loadHomeFeed(): Feed<Shelf> {
         val home = queries.home(null).json.data?.home ?: return Feed(emptyList()) { PagedData.Single { emptyList<Shelf>() }.toFeedData() }
         val tabs = if (api.cookie == null) emptyList() else
-            listOf(Tab("", "All")) + home.homeChips?.toTabs().orEmpty()
+            listOf(Tab("", ExtensionText.get("providers.all_a52ace", "All"))) + home.homeChips?.toTabs().orEmpty()
         return Feed(tabs) { tab ->
             PagedData.Single {
                 val res = if (tab == null || tab.id == "") home
@@ -519,7 +525,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         if (api.cookie == null) throw ClientException.LoginRequired()
         val filters = queries.libraryV3(0).json.data?.me?.libraryV3?.availableFilters
             ?.mapNotNull { it.name }.orEmpty()
-        val tabs = (listOf("All", "You") + filters).map { Tab(it, it) }
+        val tabs = (listOf("All", "You") + filters).map { Tab(it, if (it == "All" || it == "You") ExtensionText.category(it) else it) }
         return Feed(tabs) { tab ->
             when (tab?.id) {
                 "All", null -> pagedLibrary(queries, cropCovers = cropCovers)
@@ -531,14 +537,14 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
                     listOfNotNull(
                         Shelf.Lists.Items(
                             "top_artists",
-                            "Top Artist",
+                            ExtensionText.get("providers.top_artist_ce47d4", "Top Artist"),
                             top.topArtists?.items.orEmpty().mapNotNull {
                                 it.toMediaItem(cropCovers)
                             }
                         ),
                         Shelf.Lists.Tracks(
                             "top_tracks",
-                            "Top Tracks",
+                            ExtensionText.get("providers.top_tracks_b348ce", "Top Tracks"),
                             top.topTracks?.items.orEmpty().mapNotNull {
                                 (it.data as Item.Track).toTrack(cropCovers)
                             }
@@ -616,7 +622,7 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
         if (resGraph.isSuccess) {
             if (shouldSave) savedLocalSet.add(uri) else savedLocalSet.remove(uri)
         } else {
-            throw resGraph.exceptionOrNull() ?: Exception("Unknown error")
+            throw resGraph.exceptionOrNull() ?: Exception(ExtensionText.get("providers.unknown_error_27c2cc", "Unknown error"))
         }
     }
 
@@ -694,8 +700,8 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
                 val id = artist.id.substringAfter("spotify:user:")
                 listOfNotNull(
                     res.toShelf(),
-                    queries.profileFollowers(id).json.toShelf("${id}_followers", "Followers"),
-                    queries.profileFollowing(id).json.toShelf("${id}_following", "Following")
+                    queries.profileFollowers(id).json.toShelf("${id}_followers", ExtensionText.get("providers.followers_a145ab", "Followers")),
+                    queries.profileFollowing(id).json.toShelf("${id}_following", ExtensionText.get("providers.following_344b42", "Following"))
                 )
             }
 

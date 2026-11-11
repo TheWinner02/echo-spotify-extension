@@ -60,7 +60,7 @@ fun List<HomeFeed.Chip>.toTabs() = mapNotNull {
 
 fun HomeFeed.Home.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
     return sectionContainer?.sections?.toShelves(
-        queries, cropCovers, greeting?.transformedLabel ?: "What's on your mind?"
+        queries, cropCovers, greeting?.transformedLabel ?: ExtensionText.get("providers.what_s_on_your_mind_969030", "What’s on your mind?")
     ).orEmpty()
 }
 
@@ -282,7 +282,7 @@ fun Item.Podcast.toAlbum(cropCovers: Boolean): Album? {
         id = uri ?: return null,
         title = name ?: return null,
         type = Album.Type.Show,
-        subtitle = "Podcast",
+        subtitle = ExtensionText.get("providers.podcast_27a723", "Podcast"),
         cover = coverArt?.toImageHolder(cropCovers),
     )
 }
@@ -294,7 +294,7 @@ fun Item.Audiobook.toAlbum(cropCovers: Boolean): Album? {
         type = Album.Type.Book,
         cover = coverArt?.toImageHolder(cropCovers),
         description = description?.removeHtml(),
-        subtitle = "Audiobook",
+        subtitle = ExtensionText.get("providers.audiobook_8716cb", "Audiobook"),
         releaseDate = publishDate?.toDate(),
     )
 }
@@ -401,11 +401,11 @@ fun pagedAlbums(
 fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
     val uri = uri ?: return emptyList()
     return listOfNotNull(
-        discography?.topTracks?.toTrackShelf("${uri}_top_tracks", "Top Tracks", cropCovers),
+        discography?.topTracks?.toTrackShelf("${uri}_top_tracks", ExtensionText.get("providers.top_tracks_b348ce", "Top Tracks"), cropCovers),
         discography?.latest?.toAlbum(cropCovers)?.toShelf(),
         discography?.popularReleasesAlbums?.toShelf(
             "${uri}_popular",
-            "Popular Albums",
+            ExtensionText.get("providers.popular_albums_6f7b84", "Popular Albums"),
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographyAll(uri, it)
                     .json.data.artistUnion.discography?.all ?: Albums(null, null)
@@ -414,7 +414,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         relatedContent?.featuringV2?.toShelf(
             "${uri}_featuring",
-            "Featuring ${profile?.name}",
+            ExtensionText.get("providers.featuring_1_s_4a26d6", "Featuring %1\$s", profile?.name.orEmpty()),
             pagedItemsV2(cropCovers) {
                 queries.queryArtistFeaturing(uri, it)
                     .json.data.artistUnion.relatedContent?.featuringV2 ?: ItemsV2(null, null)
@@ -423,7 +423,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         discography?.albums?.toShelf(
             "${uri}_albums",
-            "Albums",
+            ExtensionText.get("providers.albums_57bca6", "Albums"),
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographyAlbums(uri, it)
                     .json.data.artistUnion.discography?.albums ?: Albums(null, null)
@@ -432,7 +432,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         discography?.singles?.toShelf(
             "${uri}_singles",
-            "Singles",
+            ExtensionText.get("providers.singles_f5cd7c", "Singles"),
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographySingles(uri, it)
                     .json.data.artistUnion.discography?.singles ?: Albums(null, null)
@@ -441,7 +441,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         discography?.compilations?.toShelf(
             "${uri}_compilations",
-            "Compilations",
+            ExtensionText.get("providers.compilations_73c324", "Compilations"),
             pagedAlbums(cropCovers) {
                 queries.queryArtistDiscographyCompilations(uri, it)
                     .json.data.artistUnion.discography?.compilations ?: Albums(null, null)
@@ -450,7 +450,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         profile?.playlistsV2?.toShelf(
             "${uri}_playlists",
-            "Playlists",
+            ExtensionText.get("providers.playlists_dcd0a4", "Playlists"),
             pagedItemsV2(cropCovers) {
                 queries.queryArtistPlaylists(uri, it)
                     .json.data.artistUnion.profile?.playlistsV2 ?: ItemsV2(null, null)
@@ -459,7 +459,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         relatedContent?.appearsOn?.toShelf(
             "${uri}_appears_on",
-            "Appears On",
+            ExtensionText.get("providers.appears_on_b7b0b0", "Appears On"),
             pagedAlbums(cropCovers) {
                 queries.queryArtistAppearsOn(uri, it)
                     .json.data.artistUnion.relatedContent?.appearsOn ?: Albums(null, null)
@@ -468,7 +468,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
         ),
         relatedContent?.discoveredOnV2?.toShelf(
             "${uri}_discovered_on",
-            "Discovered On",
+            ExtensionText.get("providers.discovered_on_741ab8", "Discovered On"),
             pagedItemsV2(cropCovers) {
                 queries.queryArtistDiscoveredOn(uri, it)
                     .json.data.artistUnion.relatedContent?.discoveredOnV2 ?: ItemsV2(null, null)
@@ -490,7 +490,7 @@ fun IArtist.toShelves(queries: Queries, cropCovers: Boolean): List<Shelf> {
 
 val likedPlaylist = Playlist(
     "spotify:collection:tracks",
-    "Liked Songs",
+    ExtensionText.get("providers.liked_songs_286f8b", "Liked Songs"),
     true,
     cover = "https://misc.scdn.co/liked-songs/liked-songs-300.png".toImageHolder()
 )
@@ -549,7 +549,7 @@ fun Item.toMediaItem(cropCovers: Boolean): EchoMediaItem? {
         is Item.User -> Artist(
             id = uri ?: return null,
             name = displayName ?: name ?: username ?: return null,
-            subtitle = "User",
+            subtitle = ExtensionText.get("providers.user_b512d9", "User"),
             cover = avatar?.toImageHolder(cropCovers)
         )
 
@@ -616,22 +616,22 @@ fun SearchDesktop.SearchV2.toShelvesAndTabs(
     queries: Queries,
     cropCovers: Boolean,
 ): Pair<PagedData<Shelf>, List<Tab>> {
-    val tabs = listOf(Tab("ALL", "All")) + chipOrder?.items?.mapNotNull { chip ->
+    val tabs = listOf(Tab("ALL", ExtensionText.get("providers.all_a52ace", "All"))) + chipOrder?.items?.mapNotNull { chip ->
         val name = chip.typeName ?: return@mapNotNull null
-        Tab(name, name.lowercase().replaceFirstChar { it.uppercaseChar() })
+        Tab(name, ExtensionText.category(name))
     }.orEmpty()
 
     val shelves = listOfNotNull(
         topResultsV2?.itemsV2?.firstOrNull()?.item?.toMediaItem(cropCovers)?.toShelf(),
-        tracksV2?.items?.toTrackShelf("${query}_songs", "Songs", cropCovers),
-        topResultsV2?.featured?.toMediaShelf("${query}_featured", "Featured", cropCovers),
-        artists?.toMediaShelf("${query}_artists", "Artists", cropCovers),
-        albumsV2?.toMediaShelf("${query}_albums", "Albums", cropCovers),
-        playlists?.toMediaShelf("${query}_playlists", "Playlists", cropCovers),
-        podcasts?.toMediaShelf("${query}_podcasts", "Podcasts", cropCovers),
-        episodes?.toMediaShelf("${query}_episodes", "Episodes", cropCovers),
-        users?.toMediaShelf("${query}_users", "Users", cropCovers),
-        genres?.toCategoryShelf("${query}_genres", "Genres", queries, cropCovers)
+        tracksV2?.items?.toTrackShelf("${query}_songs", ExtensionText.get("providers.songs_bc6761", "Songs"), cropCovers),
+        topResultsV2?.featured?.toMediaShelf("${query}_featured", ExtensionText.get("providers.featured_c533ca", "Featured"), cropCovers),
+        artists?.toMediaShelf("${query}_artists", ExtensionText.get("providers.artists_94e3e8", "Artists"), cropCovers),
+        albumsV2?.toMediaShelf("${query}_albums", ExtensionText.get("providers.albums_57bca6", "Albums"), cropCovers),
+        playlists?.toMediaShelf("${query}_playlists", ExtensionText.get("providers.playlists_dcd0a4", "Playlists"), cropCovers),
+        podcasts?.toMediaShelf("${query}_podcasts", ExtensionText.get("providers.podcasts_6ac749", "Podcasts"), cropCovers),
+        episodes?.toMediaShelf("${query}_episodes", ExtensionText.get("providers.episodes_83f972", "Episodes"), cropCovers),
+        users?.toMediaShelf("${query}_users", ExtensionText.get("providers.users_6b0cc9", "Users"), cropCovers),
+        genres?.toCategoryShelf("${query}_genres", ExtensionText.get("providers.genres_3561ab", "Genres"), queries, cropCovers)
     )
     return PagedData.Single { shelves } to tabs.filter { it.id !in filteredCategory }
 }
@@ -855,7 +855,7 @@ fun UserProfileView.toArtist(): Artist? {
         id = uri ?: return null,
         name = name ?: return null,
         cover = imageUrl?.toImageHolder(),
-        bio = "Total Public Playlists Count : $totalPublicPlaylistsCount",
+        bio = totalPublicPlaylistsCount?.let { ExtensionText.get("providers.total_public_playlists_1_d_69b92e", "Total public playlists: %1\$d", it) },
         extras = mapOf(
             "followers" to followersCount?.toString().orEmpty(),
         )
@@ -876,7 +876,7 @@ fun UserProfileView.toShelf(): Shelf? {
             authors = listOfNotNull(owner)
         )
     }
-    return Shelf.Lists.Items("${uri}_public_playlists", "Public Playlists", playlists)
+    return Shelf.Lists.Items("${uri}_public_playlists", ExtensionText.get("providers.public_playlists_fc188a", "Public Playlists"), playlists)
 }
 
 fun UserFollowers.toShelf(id: String, title: String): Shelf? {
