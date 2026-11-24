@@ -76,7 +76,7 @@ import javax.crypto.CipherInputStream
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
+open class SpotifyExtension : ExtensionClient, LoginClient.WebView, LoginClient.CustomInput,
     SearchFeedClient, HomeFeedClient, LibraryFeedClient, LyricsClient, ShareClient,
     TrackClient, LikeClient, RadioClient, SaveClient,
     AlbumClient, PlaylistClient, ArtistClient, FollowClient, PlaylistEditClient, GlobalSettingsProvider {
@@ -116,11 +116,11 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
     override val webViewRequest = object : WebViewRequest.Cookie<List<User>> {
         override val dontCache = true
         override val initialUrl =
-            "https://accounts.spotify.com/en/login?allow_password=1".toGetRequest(
-                mapOf("User-Agent" to WebPlayerConfig.USER_AGENT)
+            "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F".toGetRequest(
+                mapOf("User-Agent" to WebPlayerConfig.USER_AGENT, "X-Echo-WebView-Profile" to "spotify-login-v1")
             )
         override val stopUrlRegex =
-            Regex("(https://accounts\\.spotify\\.com/.{2}/status.*)|(https://open\\.spotify\\.com)")
+            Regex("^https://(?:accounts\\.spotify\\.com/(?:[a-z]{2}/)?status|open\\.spotify\\.com)(?:[/?#].*)?$")
 
         val emailRegex = Regex("remember=([^;]+)")
         override suspend fun onStop(url: NetworkRequest, cookie: String): List<User> {
@@ -137,6 +137,40 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView,
             )
             return listOf(user)
         }
+    }
+
+    override val forms = listOf(
+        LoginClient.Form(
+            key = "cookie",
+            label = "Cookie (sp_dc)",
+            icon = LoginClient.InputField.Type.Misc,
+            inputFields = listOf(
+                LoginClient.InputField(
+                    type = LoginClient.InputField.Type.Password,
+                    key = "sp_dc",
+                    label = "sp_dc",
+                    isRequired = true,
+                )
+            )
+        )
+    )
+
+    override suspend fun onLogin(key: String, data: Map<String, String?>): List<User> = when (key) {
+        "cookie" -> {
+            val raw = data["sp_dc"]?.trim()?.takeIf { it.isNotEmpty() } ?: error("sp_dc is required")
+            val token = if (raw.startsWith("sp_dc=")) raw.substringAfter("sp_dc=").substringBefore(';') else raw.substringBefore(';')
+            require(token.isNotBlank()) { "Invalid sp_dc cookie" }
+            val cookie = "sp_dc=$token"
+            val api = SpotifyApi()
+            api.settings = setting
+            api.setCookie(cookie)
+            val user = Queries(api).profileAttributes().json.toUser().copy(
+                extras = mapOf("cookie" to cookie),
+                subtitle = "Cookie session"
+            )
+            listOf(user)
+        }
+        else -> error("Unknown Spotify login method")
     }
 
     override fun setLoginUser(user: User?) {
