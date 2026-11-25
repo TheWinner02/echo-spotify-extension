@@ -119,12 +119,13 @@ open class SpotifyExtension : ExtensionClient, LoginClient.WebView, LoginClient.
             "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F".toGetRequest(
                 mapOf("User-Agent" to WebPlayerConfig.USER_AGENT, "X-Echo-WebView-Profile" to "spotify-login-v1")
             )
-        override val stopUrlRegex =
-            Regex("^https://(?:accounts\\.spotify\\.com/(?:[a-z]{2}/)?status|open\\.spotify\\.com)(?:[/?#].*)?$")
+        override val stopUrlRegex = Regex("^https://(?:accounts\\.spotify\\.com/(?:[a-z]{2}/)?status|open\\.spotify\\.com)(?:[/?#].*)?$")
 
         val emailRegex = Regex("remember=([^;]+)")
         override suspend fun onStop(url: NetworkRequest, cookie: String): List<User> {
-            if (!cookie.contains("sp_dc")) throw Exception("Token not found")
+            val token = cookie.split(';').map { it.trim().split('=', limit = 2) }
+                .firstOrNull { it.size == 2 && it[0] == "sp_dc" }?.get(1)
+            require(!token.isNullOrBlank()) { "Spotify login did not return a session cookie" }
             val api = SpotifyApi()
             api.settings = setting
             api.setCookie(cookie)
